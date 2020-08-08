@@ -35,4 +35,8 @@ class ImmoscoutItem(scrapy.Item):
     time_dest = scrapy.Field()  # time to destination using transit or driving
     time_dest2 = scrapy.Field()
     time_dest3 = scrapy.Field()
+    creation_date = scrapy.Field()
+    modification_date = scrapy.Field()
+    publish_date = scrapy.Field()
+    type = scrapy.Field()
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import json
+import logging
 from immospider.items import ImmoscoutItem
 
 
@@ -20,12 +21,13 @@ class ImmoscoutSpider(scrapy.Spider):
 
     def parse(self, response):
 
-        print(response.url)
-
+        logging.info(response)
         for line in response.xpath(self.script_xpath).extract_first().split('\n'):
             if line.strip().startswith('resultListModel'):
                 immo_json = line.strip()
+                print(immo_json)
                 immo_json = json.loads(immo_json[17:-1])
+
 
                 #TODO: On result pages with just a single result resultlistEntry is not a list, but a dictionary.
                 #TODO: So extracting data will fail.
@@ -36,18 +38,21 @@ class ImmoscoutSpider(scrapy.Spider):
                     data = result["resultlist.realEstate"]
 
                     # print(data)
-
+                    item["creation_date"] = result["@creation"]
+                    item["modification_date"] = result["@modification"]
+                    item["publication_date"] = result["@publication"]
+                    item["type"] = data["@xsi.type"]
                     item['immo_id'] = data['@id']
                     item['url'] = response.urljoin("/expose/" + str(data['@id']))
                     item['title'] = data['title']
                     address = data['address']
                     try:
-                        item['address'] = address['street'] + " " + address['houseNumber']
+                        item['address'] = address.get('street',"") + " " + address.get('houseNumber',"")
                     except:
                         item['address'] = None    
                     item['city'] = address['city']
-                    item['zip_code'] = address['postcode']
-                    item['district'] = address['quarter']
+                    item['zip_code'] = address.get('postcode',"")
+                    item['district'] = address.get('quarter',"")
 
                     item["rent"] = data["price"]["value"]
                     item["sqm"] = data["livingSpace"]
