@@ -40,7 +40,7 @@ class ImmoscoutSpider(scrapy.Spider):
                     # print(data)
                     item["creation_date"] = result["@creation"]
                     item["modification_date"] = result["@modification"]
-                    item["publication_date"] = result["@publication"]
+                    item["publication_date"] = result["@publishDate"]
                     item["type"] = data["@xsi.type"]
                     item['immo_id'] = data['@id']
                     item['url'] = response.urljoin("/expose/" + str(data['@id']))
