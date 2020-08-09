@@ -20,12 +20,13 @@ class ImmoscoutSpider(scrapy.Spider):
         yield scrapy.Request(self.url)
 
     def parse(self, response):
-
-        logging.info(response)
+        lines = response.xpath(self.script_xpath).extract_first()
+        if lines is None:
+            logging.info("Immoscout24 has flagged this crawler as a robot , Stopping crawl")
+            return None
         for line in response.xpath(self.script_xpath).extract_first().split('\n'):
             if line.strip().startswith('resultListModel'):
                 immo_json = line.strip()
-                print(immo_json)
                 immo_json = json.loads(immo_json[17:-1])
 
 
@@ -38,9 +39,9 @@ class ImmoscoutSpider(scrapy.Spider):
                     data = result["resultlist.realEstate"]
 
                     # print(data)
-                    item["creation_date"] = result["@creation"]
-                    item["modification_date"] = result["@modification"]
-                    item["publication_date"] = result["@publishDate"]
+                    item["creation_date"] = result.get("@creation")
+                    item["modification_date"] = result.get("@modification")
+                    item["publish_date"] = result.get("@publishDate")
                     item["type"] = data["@xsi.type"]
                     item['immo_id'] = data['@id']
                     item['url'] = response.urljoin("/expose/" + str(data['@id']))
@@ -67,11 +68,11 @@ class ImmoscoutSpider(scrapy.Spider):
                     if "garden" in data:
                         item["garden"] = data["garden"]
                     if "privateOffer" in data:
-                        item["private"] = data["privateOffer"]
+                        item["private"] = data["privateOffer"] is "true"
                     if "plotArea" in data:
                         item["area"] = data["plotArea"]
                     if "cellar" in data:
-                        item["cellar"] = data["cellar"]       
+                        item["cellar"] = data["cellar"] is "true"
 
                     try:
                         contact = data['contactDetails']

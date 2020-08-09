@@ -1,29 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 # Define your item pipelines here
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+import traceback
 
 import googlemaps
-import datetime
-import shelve
-from scrapy.exceptions import DropItem
-
 # see https://doc.scrapy.org/en/latest/topics/item-pipeline.html#duplicates-filter
-class DuplicatesPipeline(object):
+from sqlalchemy.orm import sessionmaker
 
-    def __init__(self):
-        self.ids_seen = shelve.open("immo_items.db")
-
-    def process_item(self, item, spider):
-        immo_id = item['immo_id']
-
-        if immo_id in self.ids_seen:
-            raise DropItem("Duplicate item found: %s" % item['url'])
-        else:
-            self.ids_seen[immo_id] = item
-            return item
+from immospider.model import db_connect, create_table, Listing
 
 
 class GooglemapsPipeline(object):
@@ -65,15 +53,15 @@ class GooglemapsPipeline(object):
         if hasattr(self, "gm_client"):
             # see https://stackoverflow.com/questions/11743019/convert-python-datetime-to-epoch-with-strftime
             next_monday_at_eight = (self._next_monday_eight_oclock(datetime.datetime.now())
-                                         - datetime.datetime(1970, 1, 1)).total_seconds()
+                                    - datetime.datetime(1970, 1, 1)).total_seconds()
 
             destinations = self._get_destinations(spider)
             travel_times = []
             for destination, mode in destinations:
                 result = self.gm_client.distance_matrix(item["address"],
-                                                              destination,
-                                                              mode=mode,
-                                                              departure_time = next_monday_at_eight)
+                                                        destination,
+                                                        mode=mode,
+                                                        departure_time=next_monday_at_eight)
                 #  Extract the travel time from the result set
                 travel_time = None
                 if result["rows"]:
@@ -85,11 +73,46 @@ class GooglemapsPipeline(object):
                                 travel_time = duration["value"]
 
                 if travel_time is not None:
-                    print(destination, mode, travel_time/60.0)
-                    travel_times.append(travel_time/60.0)
+                    print(destination, mode, travel_time / 60.0)
+                    travel_times.append(travel_time / 60.0)
 
             item["time_dest"] = travel_times[0] if len(travel_times) > 0 else None
             item["time_dest2"] = travel_times[1] if len(travel_times) > 1 else None
             item["time_dest3"] = travel_times[2] if len(travel_times) > 2 else None
 
         return item
+
+
+class PersistencePipeline(object):
+    def __init__(self):
+        self.engine = db_connect()
+        create_table(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+
+    def process_item(self, item, spider):
+        session = self.Session()
+        listing = item.to_listing()
+        try:
+            is_duplicate = self.check_duplicates(session, listing)
+            if listing.id is None:
+                session.add(listing)
+            else:
+                session.merge(listing)
+            session.commit()
+
+        except Exception as err:
+            traceback.print_tb(err.__traceback__)
+            session.rollback()
+            raise
+
+        finally:
+            session.close()
+        if is_duplicate:
+            return None
+        return item
+
+    def check_duplicates(self, session, listing: Listing):
+        existing = session.query(Listing).filter_by(immo_id=listing.immo_id).first()
+        if existing is not None:
+            listing.id = existing.id
+        return existing is not None
