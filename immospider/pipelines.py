@@ -50,6 +50,8 @@ class GooglemapsPipeline(object):
             return (monday + datetime.timedelta(weeks=1)).replace(hour=8, minute=0, second=0, microsecond=0)
 
     def process_item(self, item, spider):
+        if item is None:
+            return None
         if hasattr(self, "gm_client"):
             # see https://stackoverflow.com/questions/11743019/convert-python-datetime-to-epoch-with-strftime
             next_monday_at_eight = (self._next_monday_eight_oclock(datetime.datetime.now())
@@ -90,6 +92,8 @@ class PersistencePipeline(object):
         self.Session = sessionmaker(bind=self.engine)
 
     def process_item(self, item, spider):
+        if item is None:
+            return None
         session = self.Session()
         listing = item.to_listing()
         try:
