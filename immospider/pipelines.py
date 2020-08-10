@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-import sys
 import datetime
+import sys
 # Define your item pipelines here
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
-import logging
 import traceback
 
 import googlemaps
@@ -99,9 +98,11 @@ class PersistencePipeline(object):
     def from_crawler(cls, crawler):
         settings = crawler.settings
         connection_string = settings.get("CONNECTION_STRING")
-        return cls(connection_string)
+        crawl_id = settings.get("CRAWL_ID")
+        return cls(connection_string, crawl_id)
 
-    def __init__(self, connection_string):
+    def __init__(self, connection_string, crawl_id):
+        self.crawl_id = crawl_id
         try:
             self.engine = db_connect(connection_string)
             create_table(self.engine)
@@ -111,10 +112,11 @@ class PersistencePipeline(object):
             sys.exit(0)
 
     def process_item(self, item, spider):
-        if  item is None:
+        if item is None:
             raise DropItem("Invalid item found")
         session = self.Session()
         listing = item.to_listing()
+        listing.crawl_id = self.crawl_id
         try:
             is_duplicate = self.check_duplicates(session, listing)
             if not is_duplicate:

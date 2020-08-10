@@ -17,7 +17,7 @@ class ImmoscoutSpider(scrapy.Spider):
     # I learned this trick from https://github.com/balzer82/immoscraper/blob/master/immoscraper.ipynb .
     script_xpath = './/script[contains(., "IS24.resultList")]'
     next_xpath = '//div[@id = "pager"]/div/a/@href'
-    custom_settings = {"CONNECTION_STRING": "EXAMPLE"}
+    custom_settings = {"CONNECTION_STRING": "EXAMPLE_CONNECTION_STRING", "CRAWL_ID": "DEFAULT"}
 
     def start_requests(self):
         yield scrapy.Request(self.url)
