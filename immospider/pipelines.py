@@ -117,13 +117,14 @@ class PersistencePipeline(object):
         listing = item.to_listing()
         try:
             is_duplicate = self.check_duplicates(session, listing)
-            if listing.id is None:
+            if not is_duplicate:
                 listing.found_last = listing.first_found
                 session.add(listing)
             else:
                 listing.found_last = datetime.datetime.now()
                 session.merge(listing)
-                session.commit()
+            session.commit()
+
         except Exception as err:
             traceback.print_tb(err.__traceback__)
             session.rollback()
