@@ -106,10 +106,10 @@ class PersistencePipeline(object):
             create_table(self.engine)
             self.Session = sessionmaker(bind=self.engine)
             self.valid_connection = True
-        except:
-            logging.info(
-                "Unable to access database will write to output file only")
+        except Exception as err:
+            traceback.print_tb(err.__traceback__)
             self.valid_connection = False
+            exit(0)
 
     def process_item(self, item, spider):
         if not self.valid_connection or item is None:
