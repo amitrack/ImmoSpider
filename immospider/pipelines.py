@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import sys
 import datetime
 # Define your item pipelines here
 #
@@ -10,6 +10,7 @@ import traceback
 
 import googlemaps
 # see https://doc.scrapy.org/en/latest/topics/item-pipeline.html#duplicates-filter
+from scrapy.exceptions import DropItem
 from sqlalchemy.orm import sessionmaker
 
 from immospider.model import db_connect, create_table, Listing
@@ -105,17 +106,16 @@ class PersistencePipeline(object):
             self.engine = db_connect(connection_string)
             create_table(self.engine)
             self.Session = sessionmaker(bind=self.engine)
-            self.valid_connection = True
         except Exception as err:
             traceback.print_tb(err.__traceback__)
-            self.valid_connection = False
-            exit(0)
+            sys.exit(0)
 
     def process_item(self, item, spider):
-        if not self.valid_connection or item is None:
-            return item
+        if  item is None:
+            raise DropItem("Invalid item found")
         session = self.Session()
         listing = item.to_listing()
+        listing.found_last = datetime.datetime.now()
         try:
             is_duplicate = self.check_duplicates(session, listing)
             if listing.id is None:
@@ -132,7 +132,7 @@ class PersistencePipeline(object):
         finally:
             session.close()
         if is_duplicate:
-            return None
+            raise DropItem("Duplicate item found: %s" % item['url'])
         return item
 
     def check_duplicates(self, session, listing: Listing):
@@ -140,4 +140,6 @@ class PersistencePipeline(object):
             immo_id=listing.immo_id).first()
         if existing is not None:
             listing.id = existing.id
+        else:
+            listing.first_found = datetime.datetime.now()
         return existing is not None

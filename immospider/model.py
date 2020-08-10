@@ -49,4 +49,6 @@ class Listing(Base):
     creation_date = Column(DateTime)
     modification_date = Column(DateTime)
     publish_date = Column(DateTime)
+    first_found= Column(DateTime)
+    found_last = Column(DateTime)
     type = Column(String)
