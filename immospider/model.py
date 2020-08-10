@@ -1,33 +1,28 @@
-from sqlalchemy import create_engine, Column, Table, ForeignKey, MetaData, Sequence
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
-    Integer, String, Date, DateTime, Float, Boolean, Text,Numeric, BigInteger)
-from scrapy.utils.project import get_project_settings
+    Integer, String, DateTime, Float, Boolean, Numeric)
+from sqlalchemy import create_engine, Column
+from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
 
-def db_connect():
+def db_connect(connection_string):
     """
     Performs database connection using database settings from settings.py.
     Returns sqlalchemy engine instance
     """
-    return create_engine(get_project_settings().get("CONNECTION_STRING"))
+    return create_engine(connection_string)
 
 
 def create_table(engine):
     Base.metadata.create_all(engine)
 
 
-TABLE_ID = Sequence('table_id_seq', start=1000)
-
-
 class Listing(Base):
     __tablename__ = "listing"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    immo_id = Column(String, primary_key=True,unique=True)
+    immo_id = Column(String, primary_key=True, unique=True)
     url = Column(String)
     title = Column(String)
     address = Column(String)

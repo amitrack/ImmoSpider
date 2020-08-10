@@ -5,6 +5,7 @@ import datetime
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+import logging
 import traceback
 
 import googlemaps
@@ -47,15 +48,19 @@ class GooglemapsPipeline(object):
         if monday < monday.replace(hour=8, minute=0, second=0, microsecond=0):
             return monday.replace(hour=8, minute=0, second=0, microsecond=0)
         else:
-            return (monday + datetime.timedelta(weeks=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+            return (monday + datetime.timedelta(weeks=1)).replace(hour=8,
+                                                                  minute=0,
+                                                                  second=0,
+                                                                  microsecond=0)
 
     def process_item(self, item, spider):
         if item is None:
             return None
         if hasattr(self, "gm_client"):
             # see https://stackoverflow.com/questions/11743019/convert-python-datetime-to-epoch-with-strftime
-            next_monday_at_eight = (self._next_monday_eight_oclock(datetime.datetime.now())
-                                    - datetime.datetime(1970, 1, 1)).total_seconds()
+            next_monday_at_eight = (
+                self._next_monday_eight_oclock(datetime.datetime.now())
+                - datetime.datetime(1970, 1, 1)).total_seconds()
 
             destinations = self._get_destinations(spider)
             travel_times = []
@@ -78,22 +83,37 @@ class GooglemapsPipeline(object):
                     print(destination, mode, travel_time / 60.0)
                     travel_times.append(travel_time / 60.0)
 
-            item["time_dest"] = travel_times[0] if len(travel_times) > 0 else None
-            item["time_dest2"] = travel_times[1] if len(travel_times) > 1 else None
-            item["time_dest3"] = travel_times[2] if len(travel_times) > 2 else None
+            item["time_dest"] = travel_times[0] if len(
+                travel_times) > 0 else None
+            item["time_dest2"] = travel_times[1] if len(
+                travel_times) > 1 else None
+            item["time_dest3"] = travel_times[2] if len(
+                travel_times) > 2 else None
 
         return item
 
 
 class PersistencePipeline(object):
-    def __init__(self):
-        self.engine = db_connect()
-        create_table(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+    @classmethod
+    def from_crawler(cls, crawler):
+        settings = crawler.settings
+        connection_string = settings.get("CONNECTION_STRING")
+        return cls(connection_string)
+
+    def __init__(self, connection_string):
+        try:
+            self.engine = db_connect(connection_string)
+            create_table(self.engine)
+            self.Session = sessionmaker(bind=self.engine)
+            self.valid_connection = True
+        except:
+            logging.info(
+                "Unable to access database will write to output file only")
+            self.valid_connection = False
 
     def process_item(self, item, spider):
-        if item is None:
-            return None
+        if not self.valid_connection or item is None:
+            return item
         session = self.Session()
         listing = item.to_listing()
         try:
@@ -116,7 +136,8 @@ class PersistencePipeline(object):
         return item
 
     def check_duplicates(self, session, listing: Listing):
-        existing = session.query(Listing).filter_by(immo_id=listing.immo_id).first()
+        existing = session.query(Listing).filter_by(
+            immo_id=listing.immo_id).first()
         if existing is not None:
             listing.id = existing.id
         return existing is not None
