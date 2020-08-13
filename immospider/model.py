@@ -53,3 +53,4 @@ class Listing(Base):
     found_last = Column(DateTime)
     type = Column(String)
     crawl_id = Column(String)
+    real_estate_company = Column(String)

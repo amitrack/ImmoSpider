@@ -29,7 +29,7 @@ class ImmoscoutSpider(scrapy.Spider):
                 "Immoscout24 has flagged this crawler as a robot , Stopping crawl")
             return None
         for line in response.xpath(self.script_xpath).extract_first().split(
-            '\n'):
+                '\n'):
             if line.strip().startswith('resultListModel'):
                 immo_json = line.strip()
                 immo_json = json.loads(immo_json[17:-1])
@@ -37,8 +37,8 @@ class ImmoscoutSpider(scrapy.Spider):
                 # TODO: On result pages with just a single result resultlistEntry is not a list, but a dictionary.
                 # TODO: So extracting data will fail.
                 for result in \
-                    immo_json["searchResponseModel"]["resultlist.resultlist"][
-                        "resultlistEntries"][0]["resultlistEntry"]:
+                        immo_json["searchResponseModel"]["resultlist.resultlist"][
+                            "resultlistEntries"][0]["resultlistEntry"]:
 
                     item = ImmoscoutItem()
 
@@ -54,36 +54,26 @@ class ImmoscoutSpider(scrapy.Spider):
                         "/expose/" + str(data['@id']))
                     item['title'] = data['title']
                     address = data['address']
-                    try:
-                        item['address'] = address.get('street',
-                                                      "") + " " + address.get(
-                            'houseNumber', "")
-                    except:
-                        item['address'] = None
                     item['city'] = address['city']
                     item['zip_code'] = address.get('postcode', "")
                     item['district'] = address.get('quarter', "")
-
+                    item["address"] = address["description"]["text"]
                     item["rent"] = data["price"]["value"]
                     item["sqm"] = data["livingSpace"]
                     item["rooms"] = data["numberOfRooms"]
-
+                    item["real_estate_company"] = data.get("realtorCompanyName")
                     if "calculatedPrice" in data:
                         item["extra_costs"] = (
-                            data["calculatedPrice"]["value"] - data["price"][
+                                data["calculatedPrice"]["value"] - data["price"][
                             "value"])
-                    if "builtInKitchen" in data:
-                        item["kitchen"] = data["builtInKitchen"]
-                    if "balcony" in data:
-                        item["balcony"] = data["balcony"]
-                    if "garden" in data:
-                        item["garden"] = data["garden"]
-                    if "privateOffer" in data:
-                        item["private"] = data["privateOffer"] is "true"
-                    if "plotArea" in data:
-                        item["area"] = data["plotArea"]
-                    if "cellar" in data:
-                        item["cellar"] = data["cellar"] is "true"
+                    else:
+                        item["extra_costs"] = 0
+                    item["kitchen"] = data.get("builtInKitchen", False)
+                    item["balcony"] = data.get("balcony", False)
+                    item["garden"] = data.get("garden", False)
+                    item["private"] = data.get("privateOffer", "false") is "true"
+                    item["area"] = data.get("plotArea", False)
+                    item["cellar"] = data.get("cellar", "false") is "true"
 
                     try:
                         contact = data['contactDetails']

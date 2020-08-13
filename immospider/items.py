@@ -6,7 +6,9 @@
 # http://doc.scrapy.org/en/latest/topics/items.html
 
 import scrapy
+
 from immospider.model import Listing
+
 
 class ImmoscoutItem(scrapy.Item):
     # define the fields for your item here like:
@@ -39,6 +41,7 @@ class ImmoscoutItem(scrapy.Item):
     modification_date = scrapy.Field()
     publish_date = scrapy.Field()
     type = scrapy.Field()
+    real_estate_company = scrapy.Field()
 
     def to_listing(self):
         listing = Listing()
