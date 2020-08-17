@@ -17,7 +17,8 @@ class ImmoscoutSpider(scrapy.Spider):
     # I learned this trick from https://github.com/balzer82/immoscraper/blob/master/immoscraper.ipynb .
     script_xpath = './/script[contains(., "IS24.resultList")]'
     next_xpath = '//div[@id = "pager"]/div/a/@href'
-    custom_settings = {"CONNECTION_STRING": "EXAMPLE_CONNECTION_STRING", "CRAWL_ID": "DEFAULT"}
+    custom_settings = {"CONNECTION_STRING": "EXAMPLE_CONNECTION_STRING",
+                       "CRAWL_ID": "DEFAULT"}
 
     def start_requests(self):
         yield scrapy.Request(self.url)
@@ -29,22 +30,26 @@ class ImmoscoutSpider(scrapy.Spider):
                 "Immoscout24 has flagged this crawler as a robot , Stopping crawl")
             return None
         for line in response.xpath(self.script_xpath).extract_first().split(
-                '\n'):
+            '\n'):
             if line.strip().startswith('resultListModel'):
                 immo_json = line.strip()
                 immo_json = json.loads(immo_json[17:-1])
+                if immo_json["searchResponseModel"]["resultlist.resultlist"][
+                    "paging"]["numberOfListings"] == 1:
+                    results = [r["resultlistEntry"] for r in
+                               immo_json["searchResponseModel"][
+                                   "resultlist.resultlist"][
+                                   "resultlistEntries"]]
 
-                # TODO: On result pages with just a single result resultlistEntry is not a list, but a dictionary.
-                # TODO: So extracting data will fail.
-                for result in \
-                        immo_json["searchResponseModel"]["resultlist.resultlist"][
-                            "resultlistEntries"][0]["resultlistEntry"]:
+                else:
+                    results = \
+                        immo_json["searchResponseModel"][
+                            "resultlist.resultlist"][
+                            "resultlistEntries"][0]["resultlistEntry"]
 
+                for result in results:
                     item = ImmoscoutItem()
-
                     data = result["resultlist.realEstate"]
-
-                    # print(data)
                     item["creation_date"] = result.get("@creation")
                     item["modification_date"] = result.get("@modification")
                     item["publish_date"] = result.get("@publishDate")
@@ -64,15 +69,16 @@ class ImmoscoutSpider(scrapy.Spider):
                     item["real_estate_company"] = data.get("realtorCompanyName")
                     if "calculatedPrice" in data:
                         item["extra_costs"] = (
-                                data["calculatedPrice"]["value"] - data["price"][
+                            data["calculatedPrice"]["value"] - data["price"][
                             "value"])
                     else:
                         item["extra_costs"] = 0
                     item["kitchen"] = data.get("builtInKitchen", False)
                     item["balcony"] = data.get("balcony", False)
                     item["garden"] = data.get("garden", False)
-                    item["private"] = data.get("privateOffer", "false") is "true"
-                    item["area"] = data.get("plotArea", False)
+                    item["private"] = data.get("privateOffer",
+                                               "false") is "true"
+                    item["area"] = data.get("plotArea", 0)
                     item["cellar"] = data.get("cellar", "false") is "true"
 
                     try:
