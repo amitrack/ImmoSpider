@@ -128,7 +128,6 @@ class ImmoscoutSpider(scrapy.Spider):
             item["type"] = "ZIMMER"
             item["transaction_type"] = "MIETE"
             return None
-
         parsed = camel_case_split(type_str)
         item["type"] = type_map[parsed[0]]
         item["transaction_type"] = transaction_map[parsed[1]]
