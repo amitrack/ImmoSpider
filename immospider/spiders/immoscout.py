@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+import re
 
 import scrapy
 
 from immospider.items import ImmoscoutItem
+
+
+def camel_case_split(identifier):
+    matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z]['
+                          'a-z])|$)', identifier)
+    return [m.group(0) for m in matches]
 
 
 class ImmoscoutSpider(scrapy.Spider):
@@ -53,7 +60,7 @@ class ImmoscoutSpider(scrapy.Spider):
                     item["creation_date"] = result.get("@creation")
                     item["modification_date"] = result.get("@modification")
                     item["publish_date"] = result.get("@publishDate")
-                    item["type"] = data["@xsi.type"]
+                    self.parse_transaction(data["@xsi.type"], item)
                     item['immo_id'] = data['@id']
                     item['url'] = response.urljoin(
                         "/expose/" + str(data['@id']))
@@ -63,7 +70,7 @@ class ImmoscoutSpider(scrapy.Spider):
                     item['zip_code'] = address.get('postcode', "")
                     item['district'] = address.get('quarter', "")
                     item["address"] = address["description"]["text"]
-                    item["rent"] = data["price"]["value"]
+                    item["price"] = data["price"]["value"]
                     item["sqm"] = data["livingSpace"]
                     item["rooms"] = data["numberOfRooms"]
                     item["real_estate_company"] = data.get("realtorCompanyName")
@@ -112,3 +119,16 @@ class ImmoscoutSpider(scrapy.Spider):
             if next_page:
                 next_page = response.urljoin(next_page)
                 yield scrapy.Request(next_page, callback=self.parse)
+
+    def parse_transaction(self, type_str: str, item: ImmoscoutItem):
+        type_map = {"Apartment": "WOHNUNG", "House": "HAUS"}
+        transaction_map = {"Rent": "MIETE", "Buy": "KAUF"}
+        type_str = type_str.replace("search:", "")
+        if type_str == "FlatShareRoom":
+            item["type"] = "ZIMMER"
+            item["transaction_type"] = "MIETE"
+            return None
+
+        parsed = camel_case_split(type_str)
+        item["type"] = type_map[parsed[0]]
+        item["transaction_type"] = transaction_map[parsed[1]]

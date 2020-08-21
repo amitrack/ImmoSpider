@@ -34,7 +34,7 @@ class Listing(Base):
     lat = Column(Float)
     lng = Column(Float)
     sqm = Column(Numeric)
-    rent = Column(Numeric)
+    price = Column(Numeric)
     rooms = Column(Numeric)
     extra_costs = Column(Numeric)
     kitchen = Column(String)
@@ -54,3 +54,4 @@ class Listing(Base):
     type = Column(String)
     crawl_id = Column(String)
     real_estate_company = Column(String)
+    transaction_type = Column(String)

@@ -24,8 +24,8 @@ class ImmoscoutItem(scrapy.Item):
     media_count = scrapy.Field()
     lat = scrapy.Field()
     lng = scrapy.Field()
-    sqm  = scrapy.Field()
-    rent = scrapy.Field()
+    sqm = scrapy.Field()
+    price = scrapy.Field()
     rooms = scrapy.Field()
     extra_costs = scrapy.Field()
     kitchen = scrapy.Field()
@@ -42,6 +42,7 @@ class ImmoscoutItem(scrapy.Item):
     publish_date = scrapy.Field()
     type = scrapy.Field()
     real_estate_company = scrapy.Field()
+    transaction_type = scrapy.Field()
 
     def to_listing(self):
         listing = Listing()
