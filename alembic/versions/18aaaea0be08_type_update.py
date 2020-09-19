@@ -9,15 +9,30 @@ import re
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import engine_from_config
+from sqlalchemy.engine import reflection
 
-# revision identifiers, used by Alembic.
+
 revision = '18aaaea0be08'
 down_revision = None
 branch_labels = None
 depends_on = None
 
+def table_has_column(table, column):
+    config = op.get_context().config
+    engine = engine_from_config(
+        config.get_section(config.config_ini_section), prefix='sqlalchemy.')
+    insp = reflection.Inspector.from_engine(engine)
+    has_column = False
+    for col in insp.get_columns(table):
+        if column not in col['name']:
+            continue
+        has_column = True
+    return has_column
 
 def upgrade():
+    if table_has_column("listing", "transaction_type"):
+        return
     op.add_column('listing', sa.Column('transaction_type', sa.String))
     connection = op.get_bind()
     # Select all existing names that need migrating.
